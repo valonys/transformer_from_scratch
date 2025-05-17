@@ -1,7 +1,12 @@
 import streamlit as st
 import torch
 from threading import Thread
-from transformers import AutoTokenizer, AutoModelForCausalLM, TextIteratorStreamer
+from transformers import (
+    AutoTokenizer,
+    AutoModelForCausalLM,
+    TextIteratorStreamer,
+    AutoConfig
+)
 
 # --- Hugging Face Model Repo ---
 MODEL_REPO = "amiguel/prototype_round3_qwen0.5-1.5B-merged"
@@ -16,15 +21,16 @@ st.set_page_config(
 # --- Load Model and Tokenizer ---
 @st.cache_resource
 def load_model(repo):
+    # ✅ Override quantization_config to avoid bitsandbytes check
+    config = AutoConfig.from_pretrained(repo)
+    config.quantization_config = None  # Prevents looking for bitsandbytes
+
     tokenizer = AutoTokenizer.from_pretrained(repo, trust_remote_code=True)
-    
-    # 👉 Use float16 if GPU available, else fallback to float32 for CPU inference
-    torch_dtype = torch.float16 if torch.cuda.is_available() else torch.float32
-    
     model = AutoModelForCausalLM.from_pretrained(
         repo,
+        config=config,
         device_map="auto",
-        torch_dtype=torch_dtype,
+        torch_dtype=torch.float32,  # Ensure safe for CPU inference
         trust_remote_code=True
     )
     model.eval()
