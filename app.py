@@ -17,10 +17,14 @@ st.set_page_config(
 @st.cache_resource
 def load_model(repo):
     tokenizer = AutoTokenizer.from_pretrained(repo, trust_remote_code=True)
+    
+    # 👉 Use float16 if GPU available, else fallback to float32 for CPU inference
+    torch_dtype = torch.float16 if torch.cuda.is_available() else torch.float32
+    
     model = AutoModelForCausalLM.from_pretrained(
         repo,
         device_map="auto",
-        torch_dtype=torch.bfloat16 if torch.cuda.is_bf16_supported() else torch.float16,
+        torch_dtype=torch_dtype,
         trust_remote_code=True
     )
     model.eval()
